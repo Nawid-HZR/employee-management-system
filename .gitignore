@@ -37,6 +37,7 @@ build/
 # Sensitive configs / environment variables
 /src/main/resources/application.properties
 /src/main/resources/application.yml
+uploads
 .env
 /secrets/
 
