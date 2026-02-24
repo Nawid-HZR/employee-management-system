@@ -28,6 +28,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 
+
 @Service
 public class EmployeeDocumentServiceImpl
         implements EmployeeDocumentService {
@@ -56,16 +57,22 @@ public class EmployeeDocumentServiceImpl
         Files.createDirectories(this.uploadPath);
     }
 
+    // =========================
+    // UPLOAD
+    // =========================
     @Override
     public EmployeeDocumentResponse upload(Long employeeId,
                                            String documentName,
                                            MultipartFile file) {
 
-        if (file.isEmpty()) {
+        if (file == null || file.isEmpty()) {
             throw new BadRequestException("File is empty");
         }
 
-        // Validate type (example: allow PDF + images)
+        if (documentName == null || documentName.trim().isEmpty()) {
+            throw new BadRequestException("Document name is required");
+        }
+
         String contentType = file.getContentType();
         if (contentType == null ||
                 !(contentType.equals("application/pdf")
@@ -74,18 +81,24 @@ public class EmployeeDocumentServiceImpl
         }
 
         Employee employee = employeeRepository.findById(employeeId)
-                .orElseThrow(() -> new ResourceNotFoundException("Employee not found"));
+                .orElseThrow(() ->
+                        new ResourceNotFoundException("Employee not found"));
 
         try {
-            // Extract safe extension
-            String extension = StringUtils
-                    .getFilenameExtension(file.getOriginalFilename());
 
-            String storedFileName = UUID.randomUUID()
-                    + (extension != null ? "." + extension : "");
+            String originalFileName =
+                    StringUtils.cleanPath(file.getOriginalFilename());
+
+            String extension =
+                    StringUtils.getFilenameExtension(originalFileName);
+
+            String storedFileName =
+                    UUID.randomUUID() +
+                            (extension != null ? "." + extension : "");
 
             Path targetLocation = uploadPath.resolve(storedFileName);
 
+            // Prevent path traversal attack
             if (!targetLocation.normalize().startsWith(uploadPath)) {
                 throw new RuntimeException("Invalid file path");
             }
@@ -100,15 +113,25 @@ public class EmployeeDocumentServiceImpl
             document.setFilePath(storedFileName);
             document.setUploadedAt(LocalDateTime.now());
 
-            return mapToResponse(documentRepository.save(document));
+            EmployeeDocument saved = documentRepository.save(document);
+
+            return mapToResponse(saved);
 
         } catch (IOException ex) {
             throw new RuntimeException("Could not store file", ex);
         }
     }
 
+    // =========================
+    // GET DOCUMENTS BY EMPLOYEE
+    // =========================
     @Override
     public List<EmployeeDocumentResponse> getByEmployee(Long employeeId) {
+
+        // optional existence check
+        if (!employeeRepository.existsById(employeeId)) {
+            throw new ResourceNotFoundException("Employee not found");
+        }
 
         return documentRepository.findByEmployeeId(employeeId)
                 .stream()
@@ -116,45 +139,56 @@ public class EmployeeDocumentServiceImpl
                 .toList();
     }
 
+    // =========================
+    // DOWNLOAD
+    // =========================
     @Override
     public Resource download(Long documentId, Long employeeId) {
 
         EmployeeDocument document = documentRepository.findById(documentId)
-                .orElseThrow(() -> new ResourceNotFoundException("Document not found"));
+                .orElseThrow(() ->
+                        new ResourceNotFoundException("Document not found"));
 
         if (!document.getEmployee().getId().equals(employeeId)) {
             throw new BadRequestException("You cannot access this file");
         }
 
         try {
+
             Path filePath = uploadPath.resolve(document.getFilePath())
                     .normalize();
 
             Resource resource = new UrlResource(filePath.toUri());
 
-            if (!resource.exists()) {
+            if (!resource.exists() || !resource.isReadable()) {
                 throw new ResourceNotFoundException("File not found");
             }
 
             return resource;
 
         } catch (MalformedURLException e) {
-            throw new RuntimeException("File not found", e);
+            throw new RuntimeException("File could not be read", e);
         }
     }
 
+    // =========================
+    // DELETE
+    // =========================
     @Override
-    public String delete(Long id, Long employeeId) {
+    public String delete(Long documentId, Long employeeId) {
 
-        EmployeeDocument document = documentRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Document not found"));
+        EmployeeDocument document = documentRepository.findById(documentId)
+                .orElseThrow(() ->
+                        new ResourceNotFoundException("Document not found"));
 
         if (!document.getEmployee().getId().equals(employeeId)) {
             throw new BadRequestException("You cannot delete this file");
         }
 
         try {
-            Files.deleteIfExists(uploadPath.resolve(document.getFilePath()));
+            Files.deleteIfExists(
+                    uploadPath.resolve(document.getFilePath()).normalize()
+            );
         } catch (IOException ignored) {}
 
         documentRepository.delete(document);
@@ -162,6 +196,9 @@ public class EmployeeDocumentServiceImpl
         return "Deleted successfully";
     }
 
+    // =========================
+    // MAPPING
+    // =========================
     private EmployeeDocumentResponse mapToResponse(EmployeeDocument doc) {
 
         EmployeeDocumentResponse response =
@@ -169,7 +206,6 @@ public class EmployeeDocumentServiceImpl
 
         response.setEmployeeId(doc.getEmployee().getId());
         response.setEmployeeName(doc.getEmployee().getFullName());
-        response.setStoredFileName(doc.getFilePath());
 
         return response;
     }

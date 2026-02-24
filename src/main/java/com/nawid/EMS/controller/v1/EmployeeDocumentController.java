@@ -6,6 +6,7 @@ import com.nawid.EMS.service.EmployeeDocumentService;
 import org.springframework.core.io.Resource;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
@@ -28,26 +29,7 @@ public class EmployeeDocumentController {
     // EMPLOYEE ENDPOINTS
     // =====================================
 
-    // Upload document (own)
-//    @PreAuthorize("hasRole('EMPLOYEE')")
-//    @PostMapping("/me")
-//    public ResponseEntity<EmployeeDocumentResponse> uploadMyDocument(
-//            @RequestParam String documentName,
-//            @RequestParam MultipartFile file,
-//            Authentication authentication) {
-//
-//        CustomUserPrincipal principal =
-//                (CustomUserPrincipal) authentication.getPrincipal();
-//
-//        return new ResponseEntity<>(
-//                documentService.upload(
-//                        principal.getEmployeeId(),
-//                        documentName,
-//                        file),
-//                HttpStatus.CREATED);
-//    }
-
-    @PostMapping("/me")
+    @PostMapping(value = "/me", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     @PreAuthorize("hasRole('EMPLOYEE')")
     public ResponseEntity<EmployeeDocumentResponse> uploadMyDocument(
             @RequestParam("documentName") String documentName,
@@ -58,10 +40,15 @@ public class EmployeeDocumentController {
                 (CustomUserPrincipal) authentication.getPrincipal();
 
         EmployeeDocumentResponse response =
-                documentService.upload(principal.getEmployeeId(), documentName, file);
+                documentService.upload(
+                        principal.getEmployeeId(),
+                        documentName,
+                        file);
 
         return new ResponseEntity<>(response, HttpStatus.CREATED);
     }
+
+
 
     // Get my documents
     @PreAuthorize("hasRole('EMPLOYEE')")
