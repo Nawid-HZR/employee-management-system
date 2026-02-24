@@ -3,6 +3,7 @@ package com.nawid.EMS.controller.v1;
 
 import com.nawid.EMS.dto.request.EmployeeRequest;
 import com.nawid.EMS.dto.response.EmployeeResponse;
+import com.nawid.EMS.security.user.CustomUserPrincipal;
 import com.nawid.EMS.service.EmployeeService;
 import jakarta.validation.Valid;
 import org.springframework.data.domain.Page;
@@ -10,6 +11,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -56,6 +58,18 @@ public class EmployeeController {
     @DeleteMapping("/{id}")
     public ResponseEntity<String> delete(@PathVariable Long id) {
         return ResponseEntity.ok(employeeService.delete(id));
+    }
+    @GetMapping("/me")
+    @PreAuthorize("hasRole('EMPLOYEE')")
+    public ResponseEntity<EmployeeResponse> getMyProfile(Authentication authentication) {
+
+        CustomUserPrincipal principal =
+                (CustomUserPrincipal) authentication.getPrincipal();
+
+        EmployeeResponse response =
+                employeeService.getById(principal.getEmployeeId());
+
+        return ResponseEntity.ok(response);
     }
 
 

@@ -66,6 +66,18 @@ public class EmployeeServiceImpl implements EmployeeService {
 
         Employee saved = employeeRepository.save(employee);
 
+
+
+        // Create User account automatically
+        User user = new User();
+        user.setUsername(saved.getEmail());
+        user.setPassword(passwordEncoder.encode("123456")); // default password
+        user.setRole(Role.ROLE_EMPLOYEE);
+        user.setEmployee(saved);
+        userRepository.save(user);
+
+
+
         return mapToResponse(saved);
     }
 
