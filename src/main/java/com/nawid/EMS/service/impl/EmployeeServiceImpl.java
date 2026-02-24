@@ -10,24 +10,33 @@ import com.nawid.EMS.exception.ResourceNotFoundException;
 import com.nawid.EMS.repo.DepartmentRepository;
 import com.nawid.EMS.repo.EmployeeRepository;
 import com.nawid.EMS.repo.PositionRepository;
+import com.nawid.EMS.security.user.entity.Role;
+import com.nawid.EMS.security.user.entity.User;
+import com.nawid.EMS.security.user.repo.UserRepository;
 import com.nawid.EMS.service.EmployeeService;
 import org.modelmapper.ModelMapper;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 @Service
 public class EmployeeServiceImpl implements EmployeeService {
+
+    private final UserRepository userRepository;
+    private final PasswordEncoder passwordEncoder;
 
     private final EmployeeRepository employeeRepository;
     private final DepartmentRepository departmentRepository;
     private final PositionRepository positionRepository;
     private final ModelMapper mapper;
 
-    public EmployeeServiceImpl(EmployeeRepository employeeRepository,
+    public EmployeeServiceImpl(UserRepository userRepository, PasswordEncoder passwordEncoder, EmployeeRepository employeeRepository,
                                DepartmentRepository departmentRepository,
                                PositionRepository positionRepository,
                                ModelMapper mapper) {
+        this.userRepository = userRepository;
+        this.passwordEncoder = passwordEncoder;
         this.employeeRepository = employeeRepository;
         this.departmentRepository = departmentRepository;
         this.positionRepository = positionRepository;
